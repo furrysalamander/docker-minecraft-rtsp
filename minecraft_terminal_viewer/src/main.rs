@@ -1,6 +1,6 @@
-// filepath: /home/mike/source/docker-minecraft-rtsp/minecraft_terminal_viewer/src/main.rs
 mod config;
 mod render;
+mod ssh;
 mod xdo;
 
 use config::TerminalSize;
@@ -21,7 +21,26 @@ use crossterm::{
 };
 
 // Main function with error handling
-fn main() -> io::Result<()> {
+#[tokio::main]
+async fn main() -> io::Result<()> {
+    // Check if running in interactive mode
+    if ssh::is_interactive() {
+        // Interactive mode - run the normal terminal viewer
+        run_interactive_mode()
+    } else {
+        // Non-interactive mode - run the SSH server
+        match ssh::run_ssh_server().await {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                eprintln!("SSH server error: {}", e);
+                Err(io::Error::new(io::ErrorKind::Other, "SSH server error"))
+            }
+        }
+    }
+}
+
+// The original interactive terminal viewer mode
+fn run_interactive_mode() -> io::Result<()> {
     // Clear the terminal
     let mut stdout = io::stdout();
     execute!(
